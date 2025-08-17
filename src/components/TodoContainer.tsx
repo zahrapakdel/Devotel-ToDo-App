@@ -16,6 +16,38 @@ const TodoContainer = () => {
     const todos = useSelector((state: RootState) => state.todos.items);
     const { filterStatus, showModal, todoToDelete } = useSelector((state: RootState) => state.ui);
 
+
+    const deleteTodo = async (todo: Todo): Promise<Todo> => {
+        const response = await axios.delete(`https://dummyjson.com/todos/${todo.id}`
+        )
+        return response.data;
+    }
+
+    const deleteTodoMutation = useMutation({
+        mutationFn: deleteTodo,
+        onMutate: (todo: Todo) => {
+            dispatch(removeTodo(todo))
+        },
+        onSuccess: (data) => {
+            dispatch(removeTodo(data))
+        },
+        onError: (error) => {
+            console.log(error)
+        }
+    })
+    const handleDelete = (todo: Todo) => {
+        dispatch(openModal(todo))
+    }
+    const handleCancelDelete = () => {
+    }
+    const handleConfirmDelete = () => {
+        if (todoToDelete)
+            deleteTodoMutation.mutate(todoToDelete);
+        dispatch(closeModal());
+    }
+
+
+
     const fetchTodosList = async (): Promise<Todo[]> => {
         try {
             const response = await fetch('https://dummyjson.com/todos');
@@ -48,15 +80,7 @@ const TodoContainer = () => {
             </div>
         );
     }
-    if (todosQuery.isPending) {
-        return (
-            <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading todos...</p>
-            </div>
-        );
-    }
-
+   
 
 
     const filteredTodos = todos ? todos.filter(todo => {
@@ -67,49 +91,21 @@ const TodoContainer = () => {
 
 
 
-    const deleteTodo = async (todo: Todo): Promise<Todo> => {
-        const response = await axios.delete(`https://dummyjson.com/todos/${todo.id}`
-        )
-        return response.data;
-    }
 
-    const deleteTodoMutation = useMutation({
-        mutationFn: deleteTodo,
-        onMutate: (todo: Todo) => {
-            dispatch(removeTodo(todo))
-        },
-        onSuccess: (data) => {
-            dispatch(removeTodo(data))
-        },
-        onError: (error) => {
-            console.log(error)
-        }
-    })
-    const handleDelete = (todo: Todo) => {
-        dispatch(openModal(todo))
-    }
-    const handleCancelDelete = () => {
-    }
-    const handleConfirmDelete = () => {
-        if (todoToDelete)
-            deleteTodoMutation.mutate(todoToDelete);
-        dispatch(closeModal());
-    }
-
-    const handleReorder = useCallback((draggedId: number , hoveredId: number) => {
+    const handleReorder = useCallback((draggedId: number, hoveredId: number) => {
         const reordered = [...todos];
-        const draggedIndex = reordered.findIndex((t)=> t.id === draggedId);
-        const hoveredIndex = reordered.findIndex((t)=> t.id === hoveredId);
-        if(draggedIndex === -1 || hoveredIndex === -1) return;
+        const draggedIndex = reordered.findIndex((t) => t.id === draggedId);
+        const hoveredIndex = reordered.findIndex((t) => t.id === hoveredId);
+        if (draggedIndex === -1 || hoveredIndex === -1) return;
 
-        const [moved] = reordered.splice(draggedIndex,1);
-        reordered.splice(hoveredIndex,0,moved);
+        const [moved] = reordered.splice(draggedIndex, 1);
+        reordered.splice(hoveredIndex, 0, moved);
         dispatch(setTodos(reordered));
 
-    },[todos])
+    }, [todos])
 
-    
-    
+
+
 
 
     return (
@@ -117,8 +113,12 @@ const TodoContainer = () => {
             <div className="max-w-xl mx-auto p-4 w-full">
                 <h1 className="text-3xl font-bold text-center mb-6">Your Todos</h1>
                 <AddTodoForm />
-                <FilterByStatus filterStatus={filterStatus} onSetFilter={(status) => dispatch(setFilterStatus(status))} />
-                <TodoList todos={filteredTodos} onDelete={handleDelete} onMove={handleReorder} />
+                {todosQuery.isLoading ? (<><div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading todos...</p>
+                </div></>) : (<><FilterByStatus filterStatus={filterStatus} onSetFilter={(status) => dispatch(setFilterStatus(status))} />
+                    <TodoList todos={filteredTodos} onDelete={handleDelete} onMove={handleReorder} /></>
+                )}
             </div>
             {showModal && todoToDelete && (
                 <ConfirmationModal
